@@ -38,8 +38,6 @@ app.post('/roll', function (req, res) {
       // Iterate over each messaging event
       entry.messaging.forEach(function(event) {
         if (event.message) {
-          console.log(event)
-          console.log(event.message);
           receivedMessage(event)
         } else {
           console.log("Webhook received unknown event: ", event);
@@ -56,45 +54,81 @@ function receivedMessage(event) {
   var timeOfMessage = event.timestamp;
   var message = event.message;
 
-    console.log("Received message for user %d and page %d at %d with message:",
-      senderID, recipientID, timeOfMessage);
-    console.log(JSON.stringify(message));
+  console.log("Received message for user %d and page %d at %d with message:",
+    senderID, recipientID, timeOfMessage);
+  console.log(JSON.stringify(message));
 
-    var messageId = message.mid;
+  var messageId = message.mid;
 
-    var messageText = message.text;
-    var messageAttachments = message.attachments;
+  var messageText = message.text;
+  var messageAttachments = message.attachments;
 
-    if (messageText) {
-      var parsedMessage = messageText.split(' ');
-      console.log(parsedMessage[0]);
-      if (parsedMessage[0] === '/r') {
-        var dice = parsedMessage[1].split('d');
-        var modifier = parsedMessage.length > 2 ? parseInt(parsedMessage[3]) : 0;
-        var numDice = parseInt(dice[0]);
-        var dieSize = parseInt(dice[1]);
-        var results = [];
-        while(numDice > 0) {
-          results.push(Math.floor(Math.random() * dieSize + 1) + modifier);
-          numDice--;
-        }
-        var total = results.reduce(function(total, res) {
-          return total + res;
-        }, 0)
-        if (results.length > 1) {
-          var resultsMessage = results.reduce(function(str, res) {
-            return str + ' + ' + res.toString();
-          })
-        }
-        console.log(resultsMessage);
-        var totalMessage = resultsMessage ?
-        'Total roll: ' + total + ' (' + resultsMessage + ')' :
-        'Total roll: ' + total;
-        sendTextMessage(senderID, totalMessage)
-      } else {
-        sendTextMessage(senderID, "Unrecognized Command");
+  if (messageText) {
+    var parsedMessage = messageText.split(' ');
+    var roll = checkRoll(parsedMessage);
+    if (roll) {
+      var
+        dice = roll.diceCount,
+        size = roll.dieSize,
+        modifier = roll.modifiers,
+        results = [];
+      while(dice > 0) {
+        results.push(Math.floor(Math.random() * size + 1) + modifier);
+        dice--;
       }
+      var total = results.reduce(function(total, res) {
+        return total + res;
+      }, 0)
+      if (results.length > 1) {
+        var resultsMessage = results.reduce(function(str, res) {
+          return str + ' + ' + res.toString();
+        })
+      }
+      var totalMessage = resultsMessage ?
+      'Total roll: ' + total + ' (' + resultsMessage + ')' :
+      'Total roll: ' + total;
+      sendTextMessage(senderID, totalMessage)
+    } else {
+      sendTextMessage(senderID, "Unrecognized Command");
     }
+  }
+}
+
+//roll should match the following format: '/r 1d20 + 3'
+function checkRoll(roll) {
+  if (roll[0] !== '/r') {
+    return false;
+  }
+  var dice = roll[1] ? roll[1].split('d') : null;
+  if (!dice) {
+    return false;
+  }
+  var diceCount = parseInt(dice[0]);
+  var dieSize = parseInt(dice[1]);
+  if (isNaN(diceCount) || isNaN(dieSize)) {
+    return false;
+  }
+  var modifiers = checkModifiers(roll);
+    return {
+      diceCount,
+      dieSize,
+      modifiers
+    }
+}
+
+function checkModifiers(roll) {
+  var mods = roll.map(function(item, index, roll) {
+    if (item === '+') {
+      return parseInt(roll[index + 1]);
+    }
+    return 0;
+  });
+  if (mods.length) {
+    return mods.reduce(function(sum, mod) {
+      return sum + mod;
+    }, 0);
+  }
+  return 0;
 }
 
 function sendTextMessage(recipientId, messageText) {
