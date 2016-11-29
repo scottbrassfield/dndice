@@ -1,57 +1,22 @@
 'use strict';
 
 const
-  bodyParser = require('body-parser'),
-  config = require('config'),
-  crypto = require('crypto'),
   express = require('express'),
-  https = require('https'),
+  bodyParser = require('body-parser'),
   request = require('request');
 
+const PORT = process.env.PORT || 3000;
+
 var app = express();
-app.set('port', process.env.PORT || 5000);
-app.use(bodyParser.json({ verify: verifyRequestSignature }));
+app.use(bodyParser.json());
 
-/*
- * Be sure to setup your config values before running this code. You can
- * set them using environment variables or modifying the config file in /config.
- *
- */
+app.get('/', function(req, res) {
+  res.send('Hey There!');
+})
 
-// App Secret can be retrieved from the App Dashboard
-const APP_SECRET = (process.env.MESSENGER_APP_SECRET) ?
-  process.env.MESSENGER_APP_SECRET :
-  config.get('appSecret');
-
-// Arbitrary value used to validate a webhook
-const VALIDATION_TOKEN = (process.env.MESSENGER_VALIDATION_TOKEN) ?
-  (process.env.MESSENGER_VALIDATION_TOKEN) :
-  config.get('validationToken');
-
-// Generate a page access token for your page from the App Dashboard
-const PAGE_ACCESS_TOKEN = (process.env.MESSENGER_PAGE_ACCESS_TOKEN) ?
-  (process.env.MESSENGER_PAGE_ACCESS_TOKEN) :
-  config.get('pageAccessToken');
-
-// URL where the app is running (include protocol). Used to point to scripts and
-// assets located at this address.
-const SERVER_URL = (process.env.SERVER_URL) ?
-  (process.env.SERVER_URL) :
-  config.get('serverURL');
-
-if (!(APP_SECRET && VALIDATION_TOKEN && PAGE_ACCESS_TOKEN && SERVER_URL)) {
-  console.error("Missing config values");
-  process.exit(1);
-}
-
-/*
- * Use your own validation token. Check that the token used in the Webhook
- * setup is the same token used here.
- *
- */
 app.get('/roll', function(req, res) {
   if (req.query['hub.mode'] === 'subscribe' &&
-      req.query['hub.verify_token'] === VALIDATION_TOKEN) {
+      req.query['hub.verify_token'] === 'roll20_please') {
     console.log("Validating webhook");
     res.status(200).send(req.query['hub.challenge']);
   } else {
@@ -60,9 +25,112 @@ app.get('/roll', function(req, res) {
   }
 });
 
+app.post('/roll', function (req, res) {
+  var data = req.body;
+  // Make sure this is a page subscription
+  if (data.object === 'page') {
 
-app.listen(app.get('port'), function() {
-  console.log('Node app is running on port', app.get('port'));
+    // Iterate over each entry - there may be multiple if batched
+    data.entry.forEach(function(entry) {
+      var pageID = entry.id;
+      var timeOfEvent = entry.time;
+
+      // Iterate over each messaging event
+      entry.messaging.forEach(function(event) {
+        if (event.message) {
+          console.log(event)
+          console.log(event.message);
+          receivedMessage(event)
+        } else {
+          console.log("Webhook received unknown event: ", event);
+        }
+      });
+    });
+    res.sendStatus(200);
+  }
+});
+
+function receivedMessage(event) {
+  var senderID = event.sender.id;
+  var recipientID = event.recipient.id;
+  var timeOfMessage = event.timestamp;
+  var message = event.message;
+
+    console.log("Received message for user %d and page %d at %d with message:",
+      senderID, recipientID, timeOfMessage);
+    console.log(JSON.stringify(message));
+
+    var messageId = message.mid;
+
+    var messageText = message.text;
+    var messageAttachments = message.attachments;
+
+    if (messageText) {
+      var parsedMessage = messageText.split(' ');
+      console.log(parsedMessage);
+      if (parsedMessage[0] = '/r') {
+        var dice = parsedMessage[1].split('d');
+        console.log(dice);
+        var modifier = parseInt(parsedMessage[3]);
+        console.log(modifier);
+        var numDice = parseInt(dice[0]);
+        console.log(numDice)
+        var dieSize = parseInt(dice[1]);
+        console.log(dieSize);
+        var results = [];
+        while(numDice > 0) {
+          results.push(Math.floor(Math.random() * dieSize + 1) + modifier);
+          numDice--;
+        }
+        console.log(results);
+        var total = results.reduce(function(total, res) {
+          return total + res;
+        }, 0)
+        var totalMessage = 'Total roll: ' + total;
+        sendTextMessage(senderID, totalMessage)
+      }
+    } else if (messageAttachments) {
+      sendTextMessage(senderID, "Message with attachment received");
+    }
+}
+
+function sendTextMessage(recipientId, messageText) {
+  var messageData = {
+    recipient: {
+      id: recipientId
+    },
+    message: {
+      text: messageText
+    }
+  };
+  callSendAPI(messageData);
+}
+
+function callSendAPI(messageData) {
+  request({
+    uri: 'https://graph.facebook.com/v2.6/me/messages',
+    qs: { access_token: 'EAABqvBwnlxIBABhCLVfyZB3JdLADdhxmZCUezR4iBoFMloK0TzF6XZAZCL4xTM9Y12YqmhgGBRZCmBWLMcSUsqkGF2YVKMwsQ5ZAv5aAvUwZBmR0IjZBnRzODt4K9uxhRiMZBQj0wklP27HQ14ZAortLFENx8R4BgFygy4zVLU0tWCNQZDZD' },
+    method: 'POST',
+    json: messageData
+
+  }, function (error, response, body) {
+    if (!error && response.statusCode == 200) {
+      var recipientId = body.recipient_id;
+      var messageId = body.message_id;
+
+      console.log("Successfully sent generic message with id %s to recipient %s",
+        messageId, recipientId);
+    } else {
+      console.error("Unable to send message.");
+      console.error(response);
+      console.error(error);
+    }
+  });
+}
+
+
+app.listen(PORT, function() {
+  console.log('Node app is running on port', PORT);
 });
 
 module.exports = app;
