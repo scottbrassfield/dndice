@@ -67,30 +67,33 @@ function receivedMessage(event) {
 
     if (messageText) {
       var parsedMessage = messageText.split(' ');
-      console.log(parsedMessage);
-      if (parsedMessage[0] = '/r') {
+      console.log(parsedMessage[0]);
+      if (parsedMessage[0] === '/r') {
         var dice = parsedMessage[1].split('d');
-        console.log(dice);
-        var modifier = parseInt(parsedMessage[3]);
-        console.log(modifier);
+        var modifier = parsedMessage.length > 2 ? parseInt(parsedMessage[3]) : 0;
         var numDice = parseInt(dice[0]);
-        console.log(numDice)
         var dieSize = parseInt(dice[1]);
-        console.log(dieSize);
         var results = [];
         while(numDice > 0) {
           results.push(Math.floor(Math.random() * dieSize + 1) + modifier);
           numDice--;
         }
-        console.log(results);
         var total = results.reduce(function(total, res) {
           return total + res;
         }, 0)
-        var totalMessage = 'Total roll: ' + total;
+        if (results.length > 1) {
+          var resultsMessage = results.reduce(function(str, res) {
+            return str + ' + ' + res.toString();
+          })
+        }
+        console.log(resultsMessage);
+        var totalMessage = resultsMessage ?
+        'Total roll: ' + total + ' (' + resultsMessage + ')' :
+        'Total roll: ' + total;
         sendTextMessage(senderID, totalMessage)
+      } else {
+        sendTextMessage(senderID, "Unrecognized Command");
       }
-    } else if (messageAttachments) {
-      sendTextMessage(senderID, "Message with attachment received");
     }
 }
 
