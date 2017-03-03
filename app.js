@@ -3,12 +3,15 @@
 const
   express = require('express'),
   bodyParser = require('body-parser'),
+  path = require('path'),
   request = require('request');
 
 const PORT = process.env.PORT || 3000;
 
 var app = express();
 app.use(bodyParser.json());
+
+app.use(express.static(path.join(__dirname, 'public')))
 
 app.get('/', function(req, res) {
   res.send('Hey There!');
@@ -146,7 +149,7 @@ function sendTextMessage(recipientId, messageText) {
 function callSendAPI(messageData) {
   request({
     uri: 'https://graph.facebook.com/v2.6/me/messages',
-    qs: { access_token: 'EAABqvBwnlxIBABhCLVfyZB3JdLADdhxmZCUezR4iBoFMloK0TzF6XZAZCL4xTM9Y12YqmhgGBRZCmBWLMcSUsqkGF2YVKMwsQ5ZAv5aAvUwZBmR0IjZBnRzODt4K9uxhRiMZBQj0wklP27HQ14ZAortLFENx8R4BgFygy4zVLU0tWCNQZDZD' },
+    qs: { access_token: 'EAABqvBwnlxIBAA46tKsuPB9DcOgS1zaZAHQ4xwn1Thnlbl5ycOh5vsyVxXBQHcjbZBIeXmL9fhZAZBHF3DVWRl8DoXYZC1Kxzjj3NahC7mS3sBXEwerU7uoFmQjeDufZBtskR3hJsZCWKb9tZBxqARZA7CYODcDEagzf6NGrvFqz5nwZDZD' },
     method: 'POST',
     json: messageData
 
