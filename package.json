@@ -2,9 +2,13 @@
   "name": "dndice",
   "version": "1.0.0",
   "description": "",
-  "main": "app.js",
+  "main": "index.js",
   "scripts": {
-    "start": "node app.js"
+    "build": "babel -d ./build ./server",
+    "prebuild": "rm -rf build/*",
+    "start": "NODE_ENV=production node .build/index.js",
+    "prestart": "npm run build",
+    "dev": "babel-node ./server/index.js"
   },
   "author": "",
   "license": "ISC",
@@ -13,6 +17,21 @@
     "config": "^1.20.4",
     "ejs": "^2.4.2",
     "express": "^4.13.4",
+    "express-promise-router": "^3.0.3",
     "request": "^2.72.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.2.2",
+    "@babel/node": "^7.2.2",
+    "@babel/preset-env": "^7.3.1",
+    "babel-eslint": "^10.0.1",
+    "eslint": "^5.12.1",
+    "eslint-config-prettier": "4.0.0",
+    "eslint-config-standard": "^12.0.0",
+    "eslint-plugin-import": "^2.15.0",
+    "eslint-plugin-node": "^8.0.1",
+    "eslint-plugin-promise": "^4.0.1",
+    "eslint-plugin-standard": "^4.0.0",
+    "prettier": "1.16.1"
   }
 }
