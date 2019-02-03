@@ -6,8 +6,8 @@
   "scripts": {
     "build": "./node_modules/.bin/babel -d ./build ./server",
     "prebuild": "rm -rf build/*",
+    "heroku-postbuild": "npm run build",
     "start": "NODE_ENV=production node ./build/index.js",
-    "prestart": "npm run build",
     "dev": "babel-node ./server/index.js"
   },
   "author": "",
